@@ -1,29 +1,3 @@
-# class FileSystem:
-#   def __init__(self):
-#     total_blocks = 0
-#     used_segs = 0
-#     file_allocation = []
-
-#   def ReadFSFile(self, FNAME_files):
-#     FP_files = open(FNAME_files,'r')
-#     self.total_blocks = int(FP_files.readline())  # Tamanho do disco
-#     self.used_segs = int(FP_files.readline())     # Segmentos ocupados
-#     for i in range(0, self.used_segs):
-#       line = FP_files.readline()
-#       self.AllocateFile(line)
-#     FP_files.close()
-
-# class File:
-#   def __init__(self, file_data):
-#     file_name = file_data[0]
-#     first_block = int(file_data[1])
-#     size = int(file_data[2])
-
-# def AllocateFile(self, line):
-#   file_data = line.split(',')
-#   file = file_data[0]
-#   self.file_allocation.append(file)
-
 # Dados do arquivo
 class File:
   def __init__(self, file_data):
