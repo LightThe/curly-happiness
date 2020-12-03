@@ -34,7 +34,7 @@ class Dispatcher:
     self.process_queue.append(this_process)
     self.current_PID += 1
 
-  def ReadProcessFile(self, FNAME_process):
+  def Boot(self, FNAME_process):
     FP_process = open(FNAME_process,'r')
     for line in FP_process:
       self.QueueProcess(line)
