@@ -45,7 +45,7 @@ class FileSystem:
     
     # Inicialização do disco
     for i in range(self.total_blocks):
-      self.disk[i] = 0
+      self.disk.append(0)
     
     # Inicialização dos arquivos existentes
     i = 0
