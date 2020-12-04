@@ -1,3 +1,5 @@
+import asyncio
+
 class Process:
   # Para cada processo, os dados são
   # tempo de inicializacao, prioridade, tempo de cpu, 
@@ -12,6 +14,15 @@ class Process:
     self.scanner_nmbr = int(proc_data[5])
     self.modem_nmbr = int(proc_data[6])
     self.disk_nmbr = int(proc_data[7])
+    self.context = {"instruction": 0}
   
-  def Run(self): #TODO: implementar execução de processo
-    exit()
+  async def Run(self): 
+    while (self.priority != 0) and (self.context["instruction"] < self.CPU_time):
+      print(f"P{self.PID+1} INSTRUCTION", (self.context["instruction"]+1))
+      self.context["instruction"] += 1
+      await asyncio.sleep(1)
+  
+  def RunRealtime(self): 
+    while (self.context["instruction"] < self.CPU_time):
+      print(f"P{self.PID+1} INSTRUCTION", (self.context["instruction"]+1))
+      self.context["instruction"] += 1

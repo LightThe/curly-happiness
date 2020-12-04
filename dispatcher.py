@@ -1,4 +1,6 @@
 import sys
+import asyncio
+
 import MemoryManager  # Gerenciador de Memória
 import IOManager	    # Gerenciador de Entrada/Saída
 import FileManager    # Gerenciador de Arquivos
@@ -23,16 +25,12 @@ else:
 # Definição do Dispatcher
 class Dispatcher:
   def __init__(self):
-    #FIXME: As filas devem suportar no maximo 1000 processos
     self.input_queue = [] # Fila de processos de entrada
     self.current_PID = 0
     self.P0 = []
     self.P1 = []
     self.P2 = []
     self.P3 = []
-
-  def SchedulerMessage():
-    exit()
 
   def QueueProcess(self, destination, process_obj):
     if (len(destination) < 1000) or (destination == self.input_queue):
@@ -55,7 +53,6 @@ class Dispatcher:
     self.input_queue.sort(key=lambda process: process.init_time) # Ordena a fila por tempo de inicialização
     while len(self.input_queue) > 0:
       filtered_process = self.input_queue.pop(0)
-      print(filtered_process.priority)
       if filtered_process.priority == 0:
         self.QueueProcess(self.P0, filtered_process)
       elif filtered_process.priority == 1:
@@ -65,31 +62,47 @@ class Dispatcher:
       else: # Tudo que não for prioridade 0, 1 ou 2 é 3; Impede que processos não sejam alocados por erro de prioridade
         self.QueueProcess(self.P3, filtered_process)
 
-  def ScheduleNext(self):
+  async def ScheduleNext(self):
+    # Seleciona a fila para retirar o processo
+    source_queue = []
     if len(self.P0) > 0:
-      scheduled_proc = self.P0.pop(0)
-      scheduled_proc.run()
+      source_queue = self.P0
     elif len(self.P1) > 0:
-      scheduled_proc = self.P1.pop(0)
-      scheduled_proc.run() # FIXME: processos não sofrem preempção nunca
+      source_queue = self.P1
     elif len(self.P2) > 0:
-      scheduled_proc = self.P2.pop(0)
-      scheduled_proc.run()
+      source_queue = self.P2
     elif len(self.P3) > 0:
-      scheduled_proc = self.P3.pop(0)
-      scheduled_proc.run()
+      source_queue = self.P3
     else:
-      exit() #TODO: finalizar o sistema quando não houver mais nada pra escalonar
+      return 1
+
+    # Retira o processo da fila e executa
+    scheduled_proc = source_queue.pop(0)
+    if scheduled_proc.priority == 0:
+      scheduled_proc.RunRealtime() #Prioridade 0: tempo real
+    else:
+      try:
+        await asyncio.wait_for(scheduled_proc.Run(),timeout=1.0) # Processos de usuário, 
+      except asyncio.TimeoutError:
+        if scheduled_proc.priority < 3: 
+          scheduled_proc.priority += 1 #Aumenta a prioridade se < 3
+        if scheduled_proc.context["instruction"] < scheduled_proc.CPU_time:
+          scheduled_proc.init_time = len(self.input_queue)+1 #Ajusta o tempo de inicialização para manter a fila ordenada
+          self.QueueProcess(self.input_queue, scheduled_proc)
+      
 
 
 # No início não havia nada, e então o sistema inicializou
 # Também conhecido como MAIN():
+#TODO: finalizar o sistema quando não houver mais nada pra escalonar
 sistema = Dispatcher()
 sistema.Boot(FNAME_process)
+print("Entrada:",sistema.input_queue) # Imprime a fila de processos pra ver se funciona
 sistema.FilterProcesses()
-print(sistema.input_queue) # Imprime a fila de processos pra ver se funciona
-print(sistema.P0)
-print(sistema.P1)
-print(sistema.P2)
-print(sistema.P3)
+exit_flag = 0
+limit=0
+while exit_flag != 1 and limit < 200:
+  exit_flag = asyncio.run(sistema.ScheduleNext())
+  sistema.FilterProcesses()
+  limit+=1
 
