@@ -1,10 +1,13 @@
 # Dados do arquivo
 class File:
   def __init__(self, file_data):
-    self.file_name = file_data[0]
+    self.file_name = file_data[0].strip()
     self.first_block = int(file_data[1])
     self.size = int(file_data[2])
     self.owner = -1 # Se nenhum número de processo criou, o arquivo é acessível por todos (-1)
+
+  def SetOwnership(self, owner):
+    self.owner = int(owner)
 
 # Sistema de arquivos e gerenciadores
 class FileSystem:
@@ -12,6 +15,7 @@ class FileSystem:
     self.total_blocks = 0 
     self.used_segs = 0
     self.disk = []
+    self.file_op_list = []
   
   # Alocação de arquivo no disco
   def AllocateFile(self, file_obj):
@@ -55,7 +59,17 @@ class FileSystem:
       file = File(file_data)
       self.AllocateFile(file)
       i += 1
-    #TODO: Ler operações de arquivo para manipular o disco.
+    
+    # Leitura das operações do disco
+    for line in FP_files:
+      operation = line.split(',')
+      operation_parameters = {
+        "altering_PID": int(operation[0]),
+        "opcode": int(operation[1]),
+        "file_name": operation[2].strip(),
+        "create_blocks": int(operation[1]),
+      }
+      self.file_op_list.append(operation_parameters)
     FP_files.close()
   
   def DeleteFile(self, file_obj, caller_PID):
@@ -65,3 +79,27 @@ class FileSystem:
         self.disk[file_obj.first_block+i] = 0
     else:
       print("Não foi possível completar a operação (permissão negada)")
+
+  def FileOperations(self, process_list):
+    copyof_process_list = process_list.copy()
+    process_exist = 0
+
+    for current_op in self.file_op_list:
+      # Verifica a existência do processo
+      for process in copyof_process_list:
+        if current_op["altering_PID"] == process.PID:
+          process_exist = 1
+      if process_exist == 0:
+        return 1 # TODO: Processo não existe, erro 1
+      
+      # Verifica o tipo de operação
+      if current_op["opcode"] == 0: #FILEMODE_CREATE
+        file_data = [current_op["file_name"], 0, current_op["create_blocks"]]
+        new_file = File(file_data)
+        new_file.SetOwnership(current_op["altering_PID"])
+        self.AllocateFile(new_file)
+      elif current_op["opcode"] == 1: #FILEMODE_DELETE
+        file_data = [current_op["file_name"], 0, 0]
+        del_file = File(file_data)
+        self.DeleteFile(del_file, current_op["altering_PID"])
+
