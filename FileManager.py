@@ -90,7 +90,7 @@ class FileSystem:
 
     # Procura pelo arquivo por nome
     for index in range(len(self.disk)):
-      if self.disk[index].file_name == file_name:
+      if self.disk[index] != 0 and self.disk[index].file_name == file_name:
         # Ao encontrar um bloco que seja do arquivo, recupera o endereço inicial dele.
         file_start = self.disk[index].first_block
         break
