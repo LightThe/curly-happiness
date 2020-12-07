@@ -1,5 +1,5 @@
 # FIXME: Alguém por favor implemente isso aqui
- # EDIT: Não seri quão bem isso rodará junto com o resto do código
+# EDIT: Não seri quão bem isso rodará junto com o resto do código
 class Memoria:
 	def __init__(self):
 		self.realtime = [0]*64
@@ -14,6 +14,7 @@ def Criamem(self, pos, blocks, prioridade):
 		for x in range(blocks):
 			self.user[pos] = 1
 			pos += 1
+	# TODO: atualizar o context["mem_address"] no objeto do processo assim que for alocado
         
 def retiraMemoria(self, offset, blocks, prioridade):		# funcao que retira da memoria processos ja executados
 	if(prioridade == 0):

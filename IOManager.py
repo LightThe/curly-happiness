@@ -1,1 +1,1 @@
-# FIXME: Alguém por favor implemente isso aqui
+# FIXME: Implementar filas do IOMGR

@@ -5,14 +5,8 @@ import MemoryManager  # Gerenciador de Memória
 import IOManager	    # Gerenciador de Entrada/Saída
 import FileManager    # Gerenciador de Arquivos
 import ProcessData    # Classe de dados de processo
+import Constantes as cons
 
-# Recebe e filtra a lista de argumentos do programa
-if(len(sys.argv)<=1):
-  print("\n -----------------------DISPATCHER SO PYTHON-----------------------\n  COMO USAR:\n  dispatcher.py [processos] [arquivos]\n    Processos: Arquivo com os dados dos processos\n    Arquivos: Arquivo com os dados do sistema de arquivos\n")
-  exit()
-else:
-  FNAME_process = sys.argv[1]
-  FNAME_files = sys.argv[2]
 
 # Definição do Dispatcher
 class Dispatcher:
@@ -57,6 +51,27 @@ class Dispatcher:
         # Impede que processos não sejam alocados por erro de prioridade
         self.QueueProcess(self.P3, filtered_process)
 
+  def PrintProcInfo(self, process_obj):
+    # Essa função precisa fazer um monte de conversão de formato para imprimir as infos, por isso é uma bagunça
+    args = [
+      process_obj.PID,
+      process_obj.context["mem_addr"],
+      process_obj.memory_space,
+      process_obj.priority,
+      process_obj.CPU_time,
+      process_obj.printer_nmbr,
+      process_obj.scanner_nmbr,
+      process_obj.modem_nmbr,
+      process_obj.disk_nmbr,
+      ]
+    print("\n------------------- DISPATCHER SCHEDULING -------------------")
+    print("\n|PID|OFFSET|BLOCKS|PRIORITY|TIME|PRINTER|SCANNER|MODEM|DRIVE|")
+    print("|{0:02d} |{1:002d}   |{2:02d}    |{3:02d}      |{4:02d}  |{5:02d}     |{6:02d}     |{7:02d}   |{8:02d}   |".format(
+      args[0], args[1], args[2], args[3], args[4], args[5], args[6], args[7], args[8]
+      ))
+    print("\n-------------------------------------------------------------\n")
+
+
   async def ScheduleNext(self):
     # Seleciona a fila para retirar o processo
     source_queue = []
@@ -69,10 +84,12 @@ class Dispatcher:
     elif len(self.P3) > 0:
       source_queue = self.P3
     else:
-      return 1
+      return cons.ERR_NOT_FOUND
 
+    # TODO: Processar operações de IO antes de escalonar o processo para execução
     # Retira o processo da fila e executa
     scheduled_proc = source_queue.pop(0)
+    self.PrintProcInfo(scheduled_proc)
     if scheduled_proc.priority == 0:
       scheduled_proc.RunRealtime() #Prioridade 0: tempo real
     else:
@@ -88,17 +105,81 @@ class Dispatcher:
           self.QueueProcess(self.input_queue, scheduled_proc)
       
 
+def DebugShow(label, variable):
+  print("\n--------------------------------------DEBUG-------------------------------------")
+  print("\t",label,">>>",variable)
+  print("\n--------------------------------------------------------------------------------")
+
+def PrintFSInfo(file_sys):
+  print("\n------------------------ FILE SYSTEM ------------------------")
+  # Lista de operações
+  opnum=1
+  for item in file_sys.file_op_list:
+    print("\nOperacao",opnum, end=' ')
+    opnum +=1
+    if item["result"] == cons.RESULT_SUCCESS:
+      print("sucesso")
+    elif item["result"] == cons.ERR_NOT_FOUND:
+      print("falhou: o arquivo",item["file_name"],"não existe.")
+    elif item["result"] == cons.ERR_NO_PROCESS:
+      print("falhou: o processo",item["altering_PID"],"não existe.")
+    elif item["result"] == cons.ERR_NO_FREE_SPACE:
+      print("falhou: Não há espaço para alocaão do arquivo",item["file_name"])
+    elif item["result"] == cons.ERR_NOT_AUTHORIZED:
+      print("falhou: o processo",item["altering_PID"],"não possui permissão para alterar o arquivo",item["file_name"])
+    else:
+      print(item["result"])
+  
+  # Cria mapa do disco
+  diskmap = []
+  for item in file_sys.disk:
+    disk_pos = ""
+    if item != 0:
+      disk_pos = item.file_name
+    else:
+      disk_pos = "0"
+    diskmap.append(disk_pos)
+  
+  print("\n------------------------- DISK MAP --------------------------")
+  print(diskmap)
+  print("\n-------------------------------------------------------------\n")
+
 
 # No início não havia nada, e então o sistema inicializou
 # Também conhecido como MAIN():
-#TODO: finalizar o sistema quando não houver mais nada pra escalonar
-sistema = Dispatcher()
-sistema.Boot(FNAME_process)
-# Imprime a fila de processos pra ver se funciona
-print("\nFila de entrada:",sistema.input_queue,"\n\n")
-sistema.FilterProcesses()
-exit_flag = 0
-while exit_flag != 1:
-  exit_flag = asyncio.run(sistema.ScheduleNext())
-  sistema.FilterProcesses()
 
+print("\t ____        _   _                    ___  ____")
+print("\t|  _ \\ _   _| |_| |__   ___  _ __    / _ \\/ ___|")
+print("\t| |_) | | | | __| '_ \\ / _ \\| '_ \\  | | | \\___ \\")
+print("\t|  __/| |_| | |_| | | | (_) | | | | | |_| |___) |")
+print("\t|_|    \\__, |\\__|_| |_|\\___/|_| |_|  \\___/|____/")
+print("\t       |___/")
+print("--------------------------------------------------------------------------------")
+
+# Recebe e filtra a lista de argumentos do programa
+if(len(sys.argv)<=1):
+  print("  COMO USAR:")
+  print("  dispatcher.py [processos] [arquivos]\n    Processos: Arquivo com os dados dos processos")
+  print("    Arquivos: Arquivo com os dados do sistema de arquivos\n    (Insira o nome dos arquivos com extensão)")
+  exit()
+else:
+  FNAME_process = sys.argv[1]
+  FNAME_files = sys.argv[2]
+
+# Inicializa o Dispatcher
+dsptc = Dispatcher()
+dsptc.Boot(FNAME_process)
+
+# Inicializa o sistema de arquivos
+file_system = FileManager.FileSystem()
+file_system.InitializeFS(FNAME_files)
+# Processa as operações de arquivo usando a fila inicial de processos
+file_system.FileOperations(dsptc.input_queue)
+
+# Fluxo principal, escalonamento de processos
+dsptc_exit = cons.RESULT_SUCCESS
+while dsptc_exit != cons.ERR_NOT_FOUND:
+  dsptc.FilterProcesses()
+  dsptc_exit = asyncio.run(dsptc.ScheduleNext())
+
+PrintFSInfo(file_system)
