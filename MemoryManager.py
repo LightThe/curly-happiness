@@ -1,3 +1,5 @@
+import Constantes as cons
+
 # FIXME: Alguém por favor implemente isso aqui
 # EDIT: Não seri quão bem isso rodará junto com o resto do código
 class Memoria:

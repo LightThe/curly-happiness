@@ -19,6 +19,11 @@ ERR_NO_FREE_SPACE = 300
 # Erros de Processo 400 - 499
 ERR_NO_PROCESS = 400
 
-# Operações de arquivo (CODIGOS ESPECIAIS)
+
+# CODIGOS ESPECIAIS
+# Valor não definido
+ERR_UNDEFINED = -1
+
+# Operações de arquivo
 FILEMODE_CREATE = 0
 FILEMODE_DELETE = 1

@@ -6,7 +6,7 @@ class File:
     self.file_name = file_data[0].strip()
     self.first_block = int(file_data[1])
     self.size = int(file_data[2])
-    self.owner = -1 # Se nenhum número de processo criou, o arquivo é acessível por todos (-1)
+    self.owner = cons.ERR_UNDEFINED # Se nenhum número de processo criou, o arquivo é acessível por todos
 
   def SetOwnership(self, owner):
     self.owner = int(owner)
@@ -22,8 +22,8 @@ class FileSystem:
   
   # Alocação de arquivo no disco
   def AllocateFile(self, file_obj):
-    # Novo arquivo (primeiro bloco = -1), necessario procurar o índice do primeiro bloco, first-fit
-    if file_obj.first_block == -1:
+    # Novo arquivo (primeiro bloco undefined), necessario procurar o índice do primeiro bloco, first-fit
+    if file_obj.first_block == cons.ERR_UNDEFINED:
       for i in range(len(self.disk)):
         if self.disk[i] == 0:
           livres = 0 # Contador de blocos sequenciais livres
@@ -40,11 +40,11 @@ class FileSystem:
             break # Encontramos o índice inicial do arquivo, termina o loop
       
       # Se o índice não for alterado, não há espaço contíguo para armazenar o arquivo
-      if file_obj.first_block == -1:
+      if file_obj.first_block == cons.ERR_UNDEFINED:
         return cons.ERR_NO_FREE_SPACE
     
     # Ao final, armazena o arquivo
-    if file_obj.first_block != -1:
+    if file_obj.first_block != cons.ERR_UNDEFINED:
       for i in range(file_obj.size):
         self.disk[file_obj.first_block + i] = file_obj #str(file_obj.file_name)
       return cons.RESULT_SUCCESS
@@ -82,13 +82,13 @@ class FileSystem:
         "opcode"        : int(operation[1]),
         "file_name"     : operation[2].strip(),
         "create_blocks" : blocks,
-        "result"        : -1
+        "result"        : cons.ERR_UNDEFINED
       }
       self.file_op_list.append(operation_parameters)
     FP_files.close()
   
   def DeleteFile(self, file_name, caller_PID):
-    file_start = -1
+    file_start = cons.ERR_UNDEFINED
 
     # Procura pelo arquivo por nome
     for index in range(len(self.disk)):
@@ -98,14 +98,14 @@ class FileSystem:
         break
     
     # Se não encontrou depois do loop, o arquivo não está no disco (não existe)
-    if file_start == -1:
+    if file_start == cons.ERR_UNDEFINED:
       return cons.ERR_NOT_FOUND
     
     # Se o arquivo foi encontrado, recupera os dados dele no disco
     file_obj = self.disk[file_start]
 
     # Se o arquivo não tem dono ou o processo é dono do arquivo, autoriza a exclusão
-    if (file_obj.owner == -1) or (file_obj.owner == caller_PID):
+    if (file_obj.owner == cons.ERR_UNDEFINED) or (file_obj.owner == caller_PID):
       for i in range(file_obj.size):
         self.disk[file_obj.first_block+i] = 0
     else:
@@ -126,7 +126,7 @@ class FileSystem:
         continue
       # Verifica o tipo de operação
       if current_op["opcode"] == cons.FILEMODE_CREATE:
-        file_data = [current_op["file_name"],-1, current_op["create_blocks"]]
+        file_data = [current_op["file_name"],cons.ERR_UNDEFINED, current_op["create_blocks"]]
         new_file = File(file_data)
         new_file.SetOwnership(current_op["altering_PID"])
 

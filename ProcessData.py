@@ -1,5 +1,7 @@
 import asyncio
 
+import Constantes as cons
+
 class Process:
   # Para cada processo, os dados são
   # tempo de inicializacao, prioridade, tempo de cpu, 
@@ -14,7 +16,7 @@ class Process:
     self.scanner_nmbr = int(proc_data[5])
     self.modem_nmbr = int(proc_data[6])
     self.disk_nmbr = int(proc_data[7])
-    self.context = {"instruction": 0, "mem_addr": -1}
+    self.context = {"instruction": 0, "mem_addr": cons.ERR_UNDEFINED}
   
   async def Run(self): 
     while (self.priority != 0) and (self.context["instruction"] < self.CPU_time):
