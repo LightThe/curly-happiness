@@ -84,7 +84,7 @@ class Dispatcher:
     elif len(self.P3) > 0:
       source_queue = self.P3
     else:
-      return cons.ERR_NOT_FOUND
+      return cons.ERR_NO_PROCESS
 
     # TODO: Processar operações de IO antes de escalonar o processo para execução
     # Retira o processo da fila e executa
@@ -118,15 +118,19 @@ def PrintFSInfo(file_sys):
     print("\nOperacao",opnum, end=' ')
     opnum +=1
     if item["result"] == cons.RESULT_SUCCESS:
-      print("sucesso")
+      print("sucesso: o arquivo",item["file_name"],"foi",end=' ')
+      if(item["opcode"] == cons.FILEMODE_CREATE):
+        print("criado.")
+      else:
+        print("excluído.")
     elif item["result"] == cons.ERR_NOT_FOUND:
       print("falhou: o arquivo",item["file_name"],"não existe.")
     elif item["result"] == cons.ERR_NO_PROCESS:
-      print("falhou: o processo",item["altering_PID"],"não existe.")
+      print("falhou: o PID",item["altering_PID"],"não existe.")
     elif item["result"] == cons.ERR_NO_FREE_SPACE:
       print("falhou: Não há espaço para alocaão do arquivo",item["file_name"])
     elif item["result"] == cons.ERR_NOT_AUTHORIZED:
-      print("falhou: o processo",item["altering_PID"],"não possui permissão para alterar o arquivo",item["file_name"])
+      print("falhou: o PID",item["altering_PID"],"não possui permissão para alterar o arquivo",item["file_name"])
     else:
       print(item["result"])
   
@@ -178,7 +182,7 @@ file_system.FileOperations(dsptc.input_queue)
 
 # Fluxo principal, escalonamento de processos
 dsptc_exit = cons.RESULT_SUCCESS
-while dsptc_exit != cons.ERR_NOT_FOUND:
+while dsptc_exit != cons.ERR_NO_PROCESS:
   dsptc.FilterProcesses()
   dsptc_exit = asyncio.run(dsptc.ScheduleNext())
 
