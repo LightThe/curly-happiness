@@ -47,9 +47,7 @@ class FileSystem:
     if file_obj.first_block != cons.ERR_UNDEFINED:
       for i in range(file_obj.size):
         self.disk[file_obj.first_block + i] = file_obj #str(file_obj.file_name)
-      return cons.RESULT_SUCCESS
-      #FIXME: Todas as operações terminam como sucesso
-    
+      return cons.RESULT_SUCCESS    
   
   # Carrega os dados do arquivo de texto
   def InitializeFS(self, FNAME_files):

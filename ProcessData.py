@@ -22,7 +22,7 @@ class Process:
     while (self.priority != 0) and (self.context["instruction"] < self.CPU_time):
       print(f"P{self.PID+1} INSTRUCTION", (self.context["instruction"]+1))
       self.context["instruction"] += 1
-      #await asyncio.sleep(1)
+      await asyncio.sleep(1)
   
   def RunRealtime(self): 
     while (self.context["instruction"] < self.CPU_time):

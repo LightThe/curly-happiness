@@ -12,6 +12,7 @@ import Constantes as cons
 class Dispatcher:
   def __init__(self):
     self.input_queue = [] # Fila de processos de entrada
+    self.out_queue = [] # Fila de processos para redirecionar para IO
     self.current_PID = 0
     self.P0 = []
     self.P1 = []
@@ -37,7 +38,7 @@ class Dispatcher:
     if len(self.input_queue) == 0:
       return
     # Ordena a fila por tempo de inicialização
-    self.input_queue.sort(key=lambda process: process.init_time) 
+    self.input_queue.sort(key=lambda process: process.init_time)
     while len(self.input_queue) > 0:
       filtered_process = self.input_queue.pop(0)
       if filtered_process.priority == 0:
@@ -58,7 +59,7 @@ class Dispatcher:
       process_obj.context["mem_addr"],
       process_obj.memory_space,
       process_obj.priority,
-      process_obj.CPU_time,
+      process_obj.CPU_time-process_obj.context["instruction"],
       process_obj.printer_nmbr,
       process_obj.scanner_nmbr,
       process_obj.modem_nmbr,
@@ -86,23 +87,25 @@ class Dispatcher:
     else:
       return cons.ERR_NO_PROCESS
 
-    # TODO: Processar operações de IO antes de escalonar o processo para execução
     # Retira o processo da fila e executa
     scheduled_proc = source_queue.pop(0)
-    self.PrintProcInfo(scheduled_proc)
-    if scheduled_proc.priority == 0:
-      scheduled_proc.RunRealtime() #Prioridade 0: tempo real
+    if scheduled_proc.printer_nmbr != 0 or scheduled_proc.scanner_nmbr != 0 or scheduled_proc.modem_nmbr != 0 or scheduled_proc.disk_nmbr != 0:
+      self.out_queue.append(scheduled_proc)
     else:
-      try:
-        # Processos de usuário, escalonados com quantum de 1s
-        await asyncio.wait_for(scheduled_proc.Run(),timeout=1.0) 
-      except asyncio.TimeoutError:
-        if scheduled_proc.priority < 3: 
-          scheduled_proc.priority += 1 #Aumenta a prioridade se < 3
-        if scheduled_proc.context["instruction"] < scheduled_proc.CPU_time:
-          #Ajusta o tempo de inicialização para manter a fila ordenada
-          scheduled_proc.init_time = len(self.input_queue)+1 
-          self.QueueProcess(self.input_queue, scheduled_proc)
+      self.PrintProcInfo(scheduled_proc)
+      if scheduled_proc.priority == 0:
+        scheduled_proc.RunRealtime() #Prioridade 0: tempo real
+      else:
+        try:
+          # Processos de usuário, escalonados com quantum de 1s
+          await asyncio.wait_for(scheduled_proc.Run(),timeout=1.0) 
+        except asyncio.TimeoutError:
+          if scheduled_proc.priority < 3: 
+            scheduled_proc.priority += 1 #Aumenta a prioridade se < 3
+          if scheduled_proc.CPU_time - scheduled_proc.context["instruction"] != 0:
+            #Ajusta o tempo de inicialização para manter a fila ordenada
+            scheduled_proc.init_time = len(self.input_queue)+1 
+            self.QueueProcess(self.input_queue, scheduled_proc)
       
 
 def DebugShow(label, variable):
@@ -128,7 +131,7 @@ def PrintFSInfo(file_sys):
     elif item["result"] == cons.ERR_NO_PROCESS:
       print("falhou: o PID",item["altering_PID"],"não existe.")
     elif item["result"] == cons.ERR_NO_FREE_SPACE:
-      print("falhou: Não há espaço para alocaão do arquivo",item["file_name"])
+      print("falhou: Não há espaço para alocação do arquivo",item["file_name"])
     elif item["result"] == cons.ERR_NOT_AUTHORIZED:
       print("falhou: o PID",item["altering_PID"],"não possui permissão para alterar o arquivo",item["file_name"])
     else:
@@ -170,20 +173,34 @@ else:
   FNAME_process = sys.argv[1]
   FNAME_files = sys.argv[2]
 
-# Inicializa o Dispatcher
+# Inicializa os recursos do sistema
 dsptc = Dispatcher()
-dsptc.Boot(FNAME_process)
+fsmgr = FileManager.FileSystem()
+iomgr = IOManager.IOManager()
 
-# Inicializa o sistema de arquivos
-file_system = FileManager.FileSystem()
-file_system.InitializeFS(FNAME_files)
+# Inicializa o sistema
+dsptc.Boot(FNAME_process)
+fsmgr.InitializeFS(FNAME_files)
+
 # Processa as operações de arquivo usando a fila inicial de processos
-file_system.FileOperations(dsptc.input_queue)
+fsmgr.FileOperations(dsptc.input_queue)
 
 # Fluxo principal, escalonamento de processos
 dsptc_exit = cons.RESULT_SUCCESS
 while dsptc_exit != cons.ERR_NO_PROCESS:
+  # Procura pelo sinal de IO concluída
+  iomgr.GetIOResults(dsptc.input_queue)
+  # Reorganiza filas de prioridade
   dsptc.FilterProcesses()
+  # Executa escalonamento
   dsptc_exit = asyncio.run(dsptc.ScheduleNext())
+  # Chama proximas operações de IO
+  for item in dsptc.out_queue:
+    res = iomgr.RequestIOForProcess(item)
+  iomgr.RunIOOperations()
 
-PrintFSInfo(file_system)
+
+#Imprime resultado das operações de arquivo
+PrintFSInfo(fsmgr)
+
+iomgr.IODEBUG()
