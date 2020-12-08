@@ -173,6 +173,7 @@ else:
   FNAME_process = sys.argv[1]
   FNAME_files = sys.argv[2]
 
+
 # Inicializa os recursos do sistema
 dsptc = Dispatcher()
 fsmgr = FileManager.FileSystem()
@@ -184,6 +185,9 @@ fsmgr.InitializeFS(FNAME_files)
 
 # Processa as operações de arquivo usando a fila inicial de processos
 fsmgr.FileOperations(dsptc.input_queue)
+
+
+print("processos>>>", dsptc.input_queue)
 
 # Fluxo principal, escalonamento de processos
 dsptc_exit = cons.RESULT_SUCCESS
